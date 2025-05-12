@@ -3,50 +3,82 @@ import useSWR from 'swr';
 import { useCallback } from 'react';
 import { useUser } from '../context/UserContext';
 
-const fetcher = (url: string) => fetch(url).then(res => {
-  console.log('[useComments] GET', url, '→', res.status);
-  if (!res.ok) throw new Error('Failed to fetch comments');
-  return res.json();
-});
+export interface Comment {
+  id: number | string;
+  topic_id?: number;
+  author_id?: string;
+  content: string;
+  created_at: string;
+}
 
-export default function useComments(topicId: number) {
+type UseCommentsResult = {
+  comments: Comment[];
+  loading: boolean;
+  error: any;
+  addComment: (content: string) => Promise<void>;
+};
+
+export default function useComments(topicId: number): UseCommentsResult {
   const { user } = useUser();
-  const { data, error, mutate } = useSWR(
-    `/api/topics/${topicId}/comments`, fetcher, { refreshInterval: 5000 }
+
+  const { data, error, mutate } = useSWR<Comment[]>(
+    `/api/topics/${topicId}/comments`,
+    (url) => fetch(url).then(res => res.json()),
+    { refreshInterval: 5000 }
   );
 
-  const addComment = useCallback(async (content: string) => {
-    console.log('[useComments] addComment called with', content, 'user=', user);
-    if (!user) {
-      console.error('[useComments] no user, aborting');
-      throw new Error('Not authenticated');
-    }
-    const token = await user.getIdToken();
-    console.log('[useComments] got token', token.slice(0,10) + '…');
+  const addComment = useCallback(
+    async (content: string) => {
+      if (!user) throw new Error('Not authenticated');
 
-    const res = await fetch(`/api/topics/${topicId}/comments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ content }),
-    });
-    console.log('[useComments] POST status', res.status);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      console.error('[useComments] POST error payload', err);
-      throw new Error(err.error || 'Failed to post comment');
-    }
-    const json = await res.json();
-    console.log('[useComments] POST response json', json);
-    mutate();
-  }, [topicId, user, mutate]);
+      // 1. Snapshot previous comments
+      const previous = data ?? [];
+
+      // 2. Create an optimistic comment
+      const optimisticComment: Comment = {
+        id: `temp-${Date.now()}`,           // temporary ID
+        topic_id: topicId,
+        author_id: user.uid,
+        content,
+        created_at: new Date().toISOString()
+      };
+
+      // 3. Optimistically update the UI
+      mutate([...previous, optimisticComment], false);
+
+      try {
+        // 4. Send the real request
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/topics/${topicId}/comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ content })
+        });
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.error || 'Failed to post comment');
+        }
+
+        // 5. Replace the optimistic list with the server’s result
+        const savedComment = await res.json();
+        mutate([...previous, savedComment], false);
+      } catch (err) {
+        console.error('addComment failed, rolling back:', err);
+        // 6. Roll back to the previous state
+        mutate(previous, false);
+        throw err;
+      }
+    },
+    [data, user, topicId, mutate]
+  );
 
   return {
-    comments: data || [],
+    comments: data ?? [],
     loading: !error && !data,
     error,
-    addComment,
+    addComment
   };
 }
