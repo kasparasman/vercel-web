@@ -8,6 +8,10 @@ const nextConfig = {
   images: { unoptimized: true },
   // Simplified webpack configuration to avoid caching issues
   webpack: (config) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      undici: false,
+    };
     // Disable filesystem cache to prevent write errors
     config.cache = false;
     return config;

@@ -1,5 +1,14 @@
+// lib/firebase-client.ts
+'use client'; // ensures this only runs in the browser
+
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  type UserCredential
+} from 'firebase/auth';
 
 const cfg = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -15,3 +24,24 @@ if (!getApps().length) {
 }
 
 export const firebaseAuth = getAuth();
+
+/**
+ * Sign up a new user with email & password
+ */
+export function signUp(email: string, password: string): Promise<UserCredential> {
+  return createUserWithEmailAndPassword(firebaseAuth, email, password);
+}
+
+/**
+ * Sign in an existing user with email & password
+ */
+export function signIn(email: string, password: string): Promise<UserCredential> {
+  return signInWithEmailAndPassword(firebaseAuth, email, password);
+}
+
+/**
+ * Log out the current user
+ */
+export function logOut(): Promise<void> {
+  return signOut(firebaseAuth);
+}

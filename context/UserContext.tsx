@@ -1,32 +1,26 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { firebaseAuth } from '../lib/firebase';
-import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
+'use client';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode
+} from 'react';
+import { firebaseAuth } from '../lib/firebase-client';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 
-// Create the context
-type UserContextType = {
-  user: FirebaseUser | null;
-  loading: boolean;
-};
+type UserContextType = { user: User | null; loading: boolean };
+const UserContext = createContext<UserContextType>({ user: null, loading: true });
 
-const UserContext = createContext<UserContextType>({
-  user: null,
-  loading: true,
-});
-
-// User context provider component
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Subscribe to auth state changes
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
-      setUser(user);
+    return onAuthStateChanged(firebaseAuth, u => {
+      setUser(u);
       setLoading(false);
     });
-
-    // Cleanup subscription
-    return () => unsubscribe();
   }, []);
 
   return (
@@ -36,9 +30,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Custom hook to use the user context
 export function useUser() {
   return useContext(UserContext);
 }
-
-export default UserContext;

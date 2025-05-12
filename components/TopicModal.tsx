@@ -1,144 +1,83 @@
-import { useEffect, useState } from "react";
-import { useUser } from "@/context/UserContext";
-import useComments from "@/hooks/useComments";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { formatDistanceToNow } from "date-fns";
-import { Send, Loader2, Calendar } from "lucide-react";
+'use client';
 
-type Comment = {
-  id: number;
-  author_id: string;
-  content: string;
-  created_at: string;
-};
+import { useState } from 'react';
+import useComments from '../hooks/useComments';
+import { useUser } from '../context/UserContext';
+import Link from 'next/link';
 
-type Topic = {
-  id: number;
-  title: string;
-  date: string;
-};
-
-type TopicModalProps = {
-  topic: Topic;
-  onClose: () => void;
-};
-
-export default function TopicModal({ topic, onClose }: TopicModalProps) {
+export default function TopicModal({ topic, onClose }) {
+  console.log('Modal got topic.body=', topic.body);  // << add this!
+  const { comments, loading, addComment } = useComments(topic.id);
   const { user } = useUser();
-  const { comments, addComment, loading } = useComments(topic.id);
-  const [newComment, setNewComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Format the date to show how long ago it was posted
-  const formattedDate = formatDistanceToNow(new Date(topic.date), { addSuffix: true });
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    
-    setSubmitting(true);
-    try {
-      await addComment(newComment.trim());
-      setNewComment("");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Generate avatar initials from author ID
-  const getInitials = (authorId: string) => {
-    return authorId.substring(0, 2).toUpperCase();
-  };
+  const [text, setText] = useState('');
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{topic.title}</DialogTitle>
-          <DialogDescription className="flex items-center gap-1 text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>Posted {formattedDate}</span>
-          </DialogDescription>
-        </DialogHeader>
-        
-        {/* Topic Content - This would normally be fetched separately */}
-        <div className="p-4 bg-muted/30 rounded-md my-4">
-          <p>This is a placeholder for the full topic content. In a real application, we would fetch the complete topic details including the main content when opening this modal.</p>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+      <div className="bg-white p-6 w-full max-w-lg rounded-lg">
+        <button onClick={onClose} className="float-right">✕</button>
+        {/* ...topic header & body... */}
+        <h2 className="text-2xl font-bold mb-1">{topic.title}</h2>
+        <p className="text-sm text-gray-500 mb-4">
+        {new Date(topic.date).toLocaleDateString()}
+        </p>
+        <div className="prose mb-6">{topic.body}</div>
+        <hr className="my-4" />
+
+        {/* comments list */}
+        <div className="mt-4 space-y-3 h-48 overflow-y-auto">
+          {loading ? 'Loading…' : comments.map(c => (
+            <div key={c.id} className="p-2 bg-gray-50 rounded">
+              <p>{c.content}</p>
+              <small className="text-gray-400">
+                {new Date(c.created_at).toLocaleTimeString()}
+              </small>
+            </div>
+          ))}
         </div>
-        
-        <Separator className="my-2" />
-        
-        <h3 className="font-semibold text-lg mb-2">Comments</h3>
-        
-        {/* Comments section */}
-        <div className="overflow-y-auto flex-grow mb-4">
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : comments.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              No comments yet. Be the first to share your thoughts!
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {comments.map((comment: Comment) => (
-                <div key={comment.id} className="flex gap-3">
-                  <Avatar>
-                    <AvatarFallback>{getInitials(comment.author_id)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold">{comment.author_id}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                      </span>
-                    </div>
-                    <p className="text-sm">{comment.content}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        {/* Comment input */}
+
         {user ? (
-          <form onSubmit={handleSubmitComment} className="mt-auto">
-            <div className="flex gap-2">
-              <Textarea 
-                placeholder="Add a comment..." 
-                value={newComment} 
-                onChange={(e) => setNewComment(e.target.value)} 
-                className="flex-1 resize-none"
-                maxLength={500}
-              />
-              <Button 
-                type="submit" 
-                size="icon" 
-                disabled={!newComment.trim() || submitting}
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </Button>
-            </div>
+          <form
+            onSubmit={async e => {
+              e.preventDefault();
+              console.log('[Modal] form onSubmit fired, text=', text);
+              try {
+                await addComment(text);
+                console.log('[Modal] addComment succeeded');
+                setText('');
+              } catch (err) {
+                console.error('[Modal] addComment error:', err);
+                alert('Error posting comment: ' + (err as Error).message);
+              }
+            }}
+            className="mt-4"
+          >
+            <textarea
+              className="w-full border p-2 rounded"
+              rows={2}
+              value={text}
+              onChange={e => {
+                console.log('[Modal] textarea onChange:', e.target.value);
+                setText(e.target.value);
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!text}
+              onClick={() => console.log('[Modal] submit button clicked')}
+              className="mt-2 px-4 py-2 bg-green-500 text-white rounded"
+            >
+              Post Comment
+            </button>
           </form>
         ) : (
-          <div className="bg-muted/30 p-3 rounded text-center text-sm text-muted-foreground">
-            You need to sign in to post comments.
-          </div>
+          <p className="mt-4">
+            <Link href="/login" className="text-blue-600 underline">Log in</Link>
+             or 
+            <Link href="/register" className="text-blue-600 underline">register</Link>
+             to post comments.
+          </p>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
