@@ -1,9 +1,10 @@
 // app/page.tsx (or pages/index.tsx)
 import { query } from '../lib/db';
 import TopicCard from '../components/TopicCard';
+import type { Topic } from '../types/Topic';
 
 export default async function Page() {
-  const topics = await query(
+  const topics = await query<Topic>(
     'SELECT id, title, date, body FROM topics ORDER BY date DESC'
   );
   

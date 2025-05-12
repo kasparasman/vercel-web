@@ -5,12 +5,8 @@ import useLikes from '../hooks/useLikes';
 import { Heart } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import TopicModal from './TopicModal';
-type Topic = {
-  id: number;
-  title: string;
-  date: string;
-  body?: string;
-};
+import type { Topic } from '../types/Topic';
+
 
 
 export default function TopicCard({ topic }: { topic: Topic }) {

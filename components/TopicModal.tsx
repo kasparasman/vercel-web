@@ -1,16 +1,11 @@
 'use client';
 
-import { useState, FormEvent, MouseEvent } from 'react';
+import { useState, FormEvent, MouseEvent, JSXElementConstructor, Key, PromiseLikeOfReactNode, ReactElement, ReactNode, ReactPortal } from 'react';
 import useComments from '../hooks/useComments';
 import { useUser } from '../context/UserContext';
 import Link from 'next/link';
+import type { Topic } from '../types/Topic';
 
-type Topic = {
-  id: number;
-  title: string;
-  date: string;
-  body: string;
-};
 
 export default function TopicModal({
   topic,
@@ -55,7 +50,7 @@ export default function TopicModal({
         <div className="mt-4 space-y-3 h-48 overflow-y-auto">
           {loading
             ? 'Loading…'
-            : comments.map(c => (
+            : comments.map((c: { id: Key | null | undefined; content: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | PromiseLikeOfReactNode | null | undefined; created_at: string | number | Date; }) => (
                 <div key={c.id} className="p-2 bg-gray-50 rounded">
                   <p>{c.content}</p>
                   <small className="text-gray-400">
