@@ -5,13 +5,20 @@ import useLikes from '../hooks/useLikes';
 import { Heart } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import TopicModal from './TopicModal';
+type Topic = {
+  id: number;
+  title: string;
+  date: string;
+  body?: string;
+};
 
-export default function TopicCard({ topic }) {
+
+export default function TopicCard({ topic }: { topic: Topic }) {
   const [open, setOpen] = useState(false);
   const { count, likedByMe, toggleLike, loading: likesLoading } = useLikes(topic.id);
   const { user } = useUser();
 
-  const onHeartClick = async (e) => {
+  const onHeartClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (!user) {
       alert('Please log in or register to like this topic.');
