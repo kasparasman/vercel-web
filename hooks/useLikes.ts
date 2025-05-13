@@ -10,7 +10,7 @@ export default function useLikes(topicId: number) {
 
   const { data, error, mutate } = useSWR<LikeResponse>(
     `/api/topics/${topicId}/likes`,
-    (url) => fetch(url).then(res => res.json()),
+    (url) => fetch(url, { credentials: 'include' }).then(res => res.json()),
     { refreshInterval: 0 }
   );
 
@@ -36,6 +36,7 @@ export default function useLikes(topicId: number) {
       const token = await user.getIdToken();
       const res = await fetch(`/api/topics/${topicId}/likes`, {
         method: 'POST',
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Network response was not OK');

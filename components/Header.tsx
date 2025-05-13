@@ -1,30 +1,27 @@
 'use client';
 
-import { useUser } from '../context/UserContext';
 import Link from 'next/link';
-import { logOut } from '../lib/firebase-client';
+import { useSession, signOut } from 'next-auth/react';
+import ProfilePopup from './ProfilePopup';
 
 export default function Header() {
-  const { user, loading } = useUser();
-  if (loading) return null;
+  const { data: session, status } = useSession();
+  if (status === 'loading') return null;
 
   return (
-    <header className="p-4 bg-gray-800 text-white flex justify-between">
-      <Link href="/" className="font-bold">My Discussion App</Link>
-      <div>
-        {user ? (
+    <header className="p-4 bg-gray-800 text-white flex justify-between items-center">
+      <Link href="/" className="font-bold">Discussion App</Link>
+      <div className="flex items-center space-x-4">
+        {session?.user ? (
           <>
-            <span className="mr-4">Hi, {user.email}</span>
-            <button
-              onClick={() => logOut()}
-              className="px-3 py-1 bg-red-500 rounded"
-            >
-              Logout
+            <ProfilePopup />
+            <button onClick={() => signOut()} className="px-3 py-1 bg-red-500 rounded">
+              Log out
             </button>
           </>
         ) : (
           <>
-            <Link href="/login" className="mr-4 hover:underline">Login</Link>
+            <Link href="/login" className="hover:underline">Login</Link>
             <Link href="/register" className="hover:underline">Register</Link>
           </>
         )}

@@ -23,7 +23,7 @@ export default function useComments(topicId: number): UseCommentsResult {
 
   const { data, error, mutate } = useSWR<Comment[]>(
     `/api/topics/${topicId}/comments`,
-    (url) => fetch(url).then(res => res.json()),
+    (url) => fetch(url, { credentials: 'include' }).then(res => res.json()),
     { refreshInterval: 5000 }
   );
 
@@ -51,6 +51,7 @@ export default function useComments(topicId: number): UseCommentsResult {
         const token = await user.getIdToken();
         const res = await fetch(`/api/topics/${topicId}/comments`, {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`
