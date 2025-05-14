@@ -1,3 +1,4 @@
+'use client'
 // pages/index.tsx
 import { GetServerSideProps, NextPage } from 'next'
 import TopicCard from '../components/TopicCard'
@@ -17,7 +18,7 @@ const HomePage: NextPage<Props> = ({ topics }) => (
 )
 
 export const getServerSideProps: GetServerSideProps<Props> = async () => {
-  const topics = await query<Topic>(`
+    const topics = await query<Topic>(`
     SELECT id, title, date, body
     FROM topics
     ORDER BY date DESC

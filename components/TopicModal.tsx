@@ -1,37 +1,41 @@
-'use client';
+'use client'
 
-import { useState, FormEvent, MouseEvent, JSXElementConstructor, Key, PromiseLikeOfReactNode, ReactElement, ReactNode, ReactPortal } from 'react';
-import useComments from '../hooks/useComments';
-import { useUser } from '../context/UserContext';
-import Link from 'next/link';
-import type { Topic } from '../types/Topic';
-
+import { useState, FormEvent } from 'react'
+import { useSession, signIn }  from 'next-auth/react'
+import useComments             from '@/hooks/useComments'
+import Link                    from 'next/link'
+import type { Topic }          from '@/types/Topic'
 
 export default function TopicModal({
   topic,
-  onClose,
+  onClose
 }: {
-  topic: Topic;
-  onClose: () => void;
+  topic: Topic
+  onClose: () => void
 }) {
-  console.log('Modal got topic =', topic);
-
-  const { comments, loading, addComment } = useComments(topic.id);
-  const { user } = useUser();
-  const [text, setText] = useState('');
+  const { data: session, status } = useSession()
+  const { comments, loading, addComment } = useComments(topic.id)
+  const [text, setText] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    console.log('[Modal] form onSubmit fired, text=', text);
-    try {
-      await addComment(text);
-      console.log('[Modal] addComment succeeded');
-      setText('');
-    } catch (err) {
-      console.error('[Modal] addComment error:', err);
-      alert('Error posting comment: ' + (err as Error).message);
+    e.preventDefault()
+    // Wait for session to resolve
+    if (status === 'loading') return
+    // If not signed in, trigger NextAuth sign-in
+    if (!session) {
+      signIn()
+      return
     }
-  };
+    if (!text.trim()) return
+
+    try {
+      await addComment(text.trim())
+      setText('')
+    } catch (err) {
+      console.error('[TopicModal] addComment error:', err)
+      alert('Error posting comment: ' + (err as Error).message)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
@@ -46,11 +50,11 @@ export default function TopicModal({
         <div className="prose mb-6">{topic.body}</div>
         <hr className="my-4" />
 
-        {/* comments list */}
+        {/* Comments list */}
         <div className="mt-4 space-y-3 h-48 overflow-y-auto">
           {loading
-            ? 'Loading…'
-            : comments.map((c: { id: Key | null | undefined; content: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | PromiseLikeOfReactNode | null | undefined; created_at: string | number | Date; }) => (
+            ? <p>Loading…</p>
+            : comments.map(c => (
                 <div key={c.id} className="p-2 bg-gray-50 rounded">
                   <p>{c.content}</p>
                   <small className="text-gray-400">
@@ -60,35 +64,40 @@ export default function TopicModal({
               ))}
         </div>
 
-        {user ? (
+        {/* Comment form or prompt */}
+        {session ? (
           <form onSubmit={handleSubmit} className="mt-4">
             <textarea
               className="w-full border p-2 rounded"
               rows={2}
               value={text}
               onChange={e => setText(e.target.value)}
+              placeholder="Add a comment…"
             />
             <button
               type="submit"
-              disabled={!text}
-              className="mt-2 px-4 py-2 bg-green-500 text-white rounded"
+              disabled={!text.trim()}
+              className="mt-2 px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50"
             >
               Post Comment
             </button>
           </form>
         ) : (
           <p className="mt-4">
-            <Link href="/login" className="text-blue-600 underline">
+            <button
+              onClick={() => signIn()}
+              className="text-blue-600 underline"
+            >
               Log in
-            </Link>{' '}
+            </button>{' '}
             or{' '}
-            <Link href="/register" className="text-blue-600 underline">
-              register
+            <Link href="/register">
+              <a className="text-blue-600 underline">register</a>
             </Link>{' '}
             to post comments.
           </p>
         )}
       </div>
     </div>
-  );
+  )
 }

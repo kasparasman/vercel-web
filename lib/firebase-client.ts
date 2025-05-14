@@ -1,12 +1,12 @@
 // lib/firebase-client.ts
 'use client'; // ensures this only runs in the browser
 
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
+  signInWithEmailAndPassword as fbSignIn,
+  createUserWithEmailAndPassword as fbRegister,
+  signOut as fbSignOut,
   type UserCredential
 } from 'firebase/auth';
 
@@ -19,29 +19,30 @@ const cfg = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
-if (!getApps().length) {
-  initializeApp(cfg);
-}
+const app: FirebaseApp = !getApps().length
 
-export const firebaseAuth = getAuth();
+  ? initializeApp(cfg)
+  : getApps()[0];
+  
 
+export const firebaseAuth = getAuth(app);
 /**
  * Sign up a new user with email & password
  */
-export function signUp(email: string, password: string): Promise<UserCredential> {
-  return createUserWithEmailAndPassword(firebaseAuth, email, password);
+export function signInClient(email: string, password: string): Promise<UserCredential> {
+  return fbSignIn(firebaseAuth, email, password);
 }
 
 /**
  * Sign in an existing user with email & password
  */
-export function signIn(email: string, password: string): Promise<UserCredential> {
-  return signInWithEmailAndPassword(firebaseAuth, email, password);
+export function registerClient(email: string, password: string): Promise<UserCredential> {
+  return fbRegister(firebaseAuth, email, password);
 }
 
 /**
  * Log out the current user
  */
-export function logOut(): Promise<void> {
-  return signOut(firebaseAuth);
+export function logOutClient(): Promise<void> {
+  return fbSignOut(firebaseAuth);
 }

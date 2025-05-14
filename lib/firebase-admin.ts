@@ -10,6 +10,6 @@ if (!admin.apps.length) {
     }),
   });
 }
-
+export {admin}
 export const verifyIdToken = (token: string) =>
   admin.auth().verifyIdToken(token);
