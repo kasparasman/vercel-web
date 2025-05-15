@@ -1,5 +1,4 @@
 'use client'
-console.log('🔍 register.tsx is running in the client')
 // pages/login.tsx
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'

@@ -1,27 +1,61 @@
-import { getServerSession } from 'next-auth/next';
-import { authOptions }      from '../../lib/authOptions';
-import { query }            from '../../lib/db';
+// pages/api/profile.ts
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '../../lib/authOptions'
+import { prisma } from '@/lib/prisma'
 
-export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session?.user?.id) return res.status(401).json({ error: 'Not authenticated' });
+type ErrorResponse = { error: string }
 
-  const uid = session.user.id;
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const session = await getServerSession(req, res, authOptions)
+  if (!session?.user?.id) {
+    return res.status(401).json({ error: 'Not authenticated' } as ErrorResponse)
+  }
+  const uid = session.user.id
+
+  // GET /api/profile
   if (req.method === 'GET') {
-    const [profile] = await query('SELECT id, email, nickname, avatar_url FROM profiles WHERE id=$1', [uid]);
-    return res.status(200).json(profile);
+    const profile = await prisma.profiles.findUnique({
+      where: { id: uid },
+      select: { id: true, email: true, nickname: true, avatar_url: true }
+    })
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' } as ErrorResponse)
+    }
+    return res.status(200).json(profile)
   }
 
+  // POST /api/profile
   if (req.method === 'POST') {
-    const { nickname, avatar_url } = req.body;
-    const upsert = await query(`
-      INSERT INTO profiles(id, email, nickname, avatar_url)
-      VALUES($1,$2,$3,$4)
-      ON CONFLICT (id) DO UPDATE SET nickname=EXCLUDED.nickname, avatar_url=EXCLUDED.avatar_url
-    `, [uid, session.user.email, nickname, avatar_url]);
-    return res.status(200).json(upsert[0]);
+    const { nickname, avatar_url } = req.body as {
+      nickname: string
+      avatar_url?: string | null
+    }
+    if (typeof nickname !== 'string') {
+      return res.status(400).json({ error: 'Invalid nickname' } as ErrorResponse)
+    }
+
+    const upserted = await prisma.profiles.upsert({
+      where: { id: uid },
+      create: {
+        id: uid,
+        email: session.user.email ?? '',
+        nickname,
+        avatar_url: avatar_url ?? null
+      },
+      update: {
+        nickname,
+        avatar_url: avatar_url ?? null
+      }
+    })
+
+    return res.status(200).json(upserted)
   }
 
-  res.setHeader('Allow', ['GET','POST']);
-  res.status(405).end();
+  // Method Not Allowed
+  res.setHeader('Allow', ['GET', 'POST'])
+  res.status(405).end(`Method ${req.method} Not Allowed`)
 }

@@ -32,7 +32,7 @@ export default function TopicCard({ topic }: { topic: Topic }) {
         className="p-4 bg-gray-100 rounded flex justify-between items-center cursor-pointer"
         onClick={() => setOpen(true)}
       >
-        <div>
+        <div> 
           <h3 className="text-lg font-semibold">{topic.title}</h3>
           <p className="text-sm text-gray-500">
             {new Date(topic.date).toLocaleDateString()}

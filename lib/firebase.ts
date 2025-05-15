@@ -2,8 +2,6 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { getIdToken } from "firebase/auth";
 
-// For simplicity, we'll use placeholder Firebase config values
-// In a real app, you would replace these with actual values from your Firebase console
 const clientConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
   authDomain: process.env.FIREBASE_AUTH_DOMAIN,

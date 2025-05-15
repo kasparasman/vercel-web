@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { authOptions }      from '../../../../lib/authOptions'
-import { query }            from '../../../../lib/db'
+import { prisma } from '@/lib/prisma';
 
 type LikeResponse = { count: number; likedByMe: boolean }
 
@@ -13,19 +13,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // GET /api/topics/[id]/likes
   if (req.method === 'GET') {
-    const countRes = await query<{ count: string }>(
-      'SELECT COUNT(*) AS count FROM likes WHERE topic_id=$1',
-      [topicId]
-    )
-    const count = parseInt(countRes[0].count, 10)
-
+      const count = await prisma.likes.count({
+      where: { topic_id: topicId }
+    })
     const likedByMe = session?.user?.id
-      ? (await query(
-          'SELECT id FROM likes WHERE topic_id=$1 AND user_id=$2',
-          [topicId, session.user.id]
-        )).length > 0
+      ? (await prisma.likes.findFirst({
+          where: {
+            topic_id: topicId,
+            user_id: session.user.id
+          }
+        })) !== null
       : false
-
     return res.status(200).json({ count, likedByMe } as LikeResponse)
   }
 
@@ -36,32 +34,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const userId = session.user.id
 
-    const exists = await query<{ id: string }>(
-      'SELECT id FROM likes WHERE topic_id=$1 AND user_id=$2',
-      [topicId, userId]
-    )
-    if (exists.length) {
-      await query(
-        'DELETE FROM likes WHERE topic_id=$1 AND user_id=$2',
-        [topicId, userId]
-      )
+    // Check existing like
+    const existingLike = await prisma.likes.findFirst({
+      where: {
+        topic_id: topicId,
+        user_id: userId
+      }
+    })
+
+    if (existingLike) {
+      // Remove like
+      await prisma.likes.delete({
+        where: { id: existingLike.id }
+      })
     } else {
-      await query(
-        'INSERT INTO likes(topic_id, user_id) VALUES($1, $2)',
-        [topicId, userId]
-      )
+      // Add like
+      await prisma.likes.create({
+        data: {
+          topic_id: topicId,
+          user_id: userId
+        }
+      })
     }
 
-    const newCountRes = await query<{ count: string }>(
-      'SELECT COUNT(*) AS count FROM likes WHERE topic_id=$1',
-      [topicId]
-    )
-    const count = parseInt(newCountRes[0].count, 10)
-    const likedByMe = exists.length === 0
+    // Fetch updated count
+    const newCount = await prisma.likes.count({
+      where: { topic_id: topicId }
+    })
+    const likedByMe = existingLike == null
 
-    return res.status(200).json({ count, likedByMe } as LikeResponse)
+    return res.status(200).json({ count: newCount, likedByMe } as LikeResponse)
   }
-
   // Method Not Allowed
   res.setHeader('Allow', ['GET', 'POST'])
   res.status(405).end(`Method ${req.method} Not Allowed`)
